@@ -1,0 +1,213 @@
+<style>
+body {
+  min-width:357px;
+  overflow-x:hidden;
+}
+
+a{
+	text-decoration:none;
+	font:verdana;
+	font-size:10;
+}
+img {
+  margin:5px;
+  border:2px solid black;
+  vertical-align:middle;
+  width:75px;
+  height:75px;
+}
+
+div{
+	font:verdana;
+	font-size:10;
+}
+</style>
+
+<script>
+var pagenumber = 1;
+var numberofpages = 1;
+var totalpages = 1;
+var lat_param =0;
+var lon_param=0;
+/*var req = new XMLHttpRequest();
+req.open(
+    "GET",
+    "http://api.flickr.com/services/rest/?" +
+        "method=flickr.photos.search&" +
+        "api_key=90485e931f687a9b9c2a66bf58a3861a&" +
+        "text=sun%20set&" +
+        "safe_search=1&" +  // 1 is "safe"
+        "content_type=1&" +  // 1 is "photos only"
+        "sort=relevance&" +  // another good one is "interestingness-desc"
+        "per_page=24",
+    true);
+req.onload = showPhotos;
+req.send(null);
+*/
+function showPhotos() {
+	
+  var photos = req.responseXML.getElementsByTagName("photo");
+//alert( photos );
+  for (var i = 0, photo; photo = photos[i]; i++) {
+    var img = document.createElement("image");
+    img.src = constructImageURL(photo);
+	
+    //document.body.appendChild(img);
+  }
+}
+function searchPhotos(req) {
+	var photos = req.responseXML.getElementsByTagName("photos");
+	totalpages = photos[0].getAttribute("pages");
+	document.getElementById("title_text").innerHTML = pagenumber+" of "+ totalpages;
+	if(totalpages >1){
+		var pageniationlinkstr = 	"<a href = javascript:callFirst()>"+
+									" First </a>&nbsp;" +
+									"<a href=javascript:callPrev()>" +
+									" Prev </a> &nbsp;" +
+									" <a href=javascript:callNext()>" +
+									" Next </a>&nbsp;"+
+									"<a href=javascript:callLast()>"+
+									" Last </a>";
+		document.getElementById("pagenumbers").innerHTML=pageniationlinkstr;
+	} else{
+	}
+  var photos = req.responseXML.getElementsByTagName("photo");
+  //alert(photos.length);
+  if( photos.length == 0 ){
+	document.getElementById("photobucket").innerHTML ="No results Found";
+  } else {
+	document.getElementById("photobucket").innerHTML ="";
+  }
+  var imgsrc ="";
+  for (var i = 0, photo; photo = photos[i]; i++) {
+    imgsrc = 	imgsrc +"<a href=javascript:openmytab('"+constructImageURL(photo)+"')"+
+					" target='_blank'><img src="+constructImageURL(photo)+
+					"></a>";
+	}
+  document.getElementById("photobucket").innerHTML=imgsrc;
+}
+function openmytab(myurl){
+	chrome.tabs.create({url: myurl});
+}
+
+// See: http://www.flickr.com/services/api/misc.urls.html
+function constructImageURL(photo) {
+  return "http://farm" + photo.getAttribute("farm") +
+      ".static.flickr.com/" + photo.getAttribute("server") +
+      "/" + photo.getAttribute("id") +
+      "_" + photo.getAttribute("secret") +
+      "_z.jpg";
+}
+//http://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=90485e931f687a9b9c2a66bf58a3861a&text=sda&safe_search=1&content_type=1&sort=relevance&page=1&per_page=12
+function callMySearch(pagenum){
+	var searchstr = document.getElementById("mysearch").value;
+	var upload_date = "";
+	if( document.getElementById("local_check").checked ){
+		initiate_geolocation();
+		upload_date = "2010-01-01";
+	} else {
+		lat_param =0;
+		lon_param=0;
+	}
+	var xhr = new XMLHttpRequest();
+	xhr.onreadystatechange = function(data) {
+          if (xhr.readyState == 4) {
+            if (xhr.status == 200) {
+              searchPhotos(xhr);
+            } else {
+              //callback(null);
+            }
+          }
+        }
+	xhr.open(
+    "GET",
+    "http://api.flickr.com/services/rest/?" +
+        "method=flickr.photos.search&" +
+        "api_key=90485e931f687a9b9c2a66bf58a3861a&" +
+        "text="+searchstr+"&" +
+        "safe_search=1&" +  // 1 is "safe"
+        "content_type=1&" +  // 1 is "photos only"
+        "sort=relevance&" +  // another good one is "interestingness-desc"
+		"page="+pagenum+"&" + //page number
+        "per_page=12&"+ //per page no of fotos
+		"accuracy=3&"+
+		//"lat="+lat_param+"&"+
+		//"lon="+lon_param+"&"+
+		//"min_upload_date ="+upload_date,
+    true);
+	
+	xhr.send(null);
+	
+
+}
+
+function callPrev(){
+	pagenumber = pagenumber-1;
+	if( pagenumber < 1){
+		pagenumber = 1;
+	}
+	callMySearch(pagenumber);
+}
+
+function callNext(){
+	pagenumber = parseInt(pagenumber,10)+1;
+	if( pagenumber >= totalpages){
+		pagenumber = totalpages;
+	}
+	callMySearch(pagenumber);
+}
+
+function callFirst(){
+	pagenumber = 1;
+	callMySearch(pagenumber);
+}
+
+function callLast(){
+	pagenumber = totalpages-1;
+	callMySearch(pagenumber);
+}
+
+function gotoPageNum(){
+	pagenumber = document.getElementById("pagenum").value
+	callMySearch(pagenumber);
+}
+
+ function initiate_geolocation() {  
+			//alert( "geolocation");
+             navigator.geolocation.getCurrentPosition(handle_geolocation_query,handle_errors);  
+         }  
+   
+ function handle_geolocation_query(position){  
+             lat_param = position.coords.latitude;  
+             lon_param = position.coords.longitude;  
+  }
+ function handle_errors(error)  
+         {  
+             switch(error.code)  
+             {  
+                 case error.PERMISSION_DENIED: alert("user did not share geolocation data");  
+                 break;  
+   
+                 case error.POSITION_UNAVAILABLE: alert("could not detect current position");  
+                break;  
+  
+                 case error.TIMEOUT: alert("retrieving position timed out");  
+                 break;  
+   
+                 default: alert("unknown error");  
+                 break;  
+            }  
+         }  
+</script>
+
+<body>
+<div id="title_text"></div>
+<input type="text" id="mysearch" name="mysearch">
+<input type="button" id="search_btn" name="search_btn" value="Search Flickr" onclick="callMySearch(1)">
+<input type="checkbox" id="local_check" name="local_check" > Local
+<input type="text" id="pagenum" name="pagenum">
+<input type="button" id="pagenum_btn" name="pagenum_btn" value="Jump to Page" onclick="gotoPageNum()">
+
+<div id="photobucket"></div>
+<div id="pagenumbers"></div>
+</body>
